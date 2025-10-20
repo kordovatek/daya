@@ -63,8 +63,9 @@ struct Provider: TimelineProvider {
             weekProgress: weekProgress
         )
         
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
-        let timeline = Timeline(entries: [entry], policy: .after(tomorrow))
+        // Refresh widget every 15 minutes for real-time updates
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: today)!
+        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
     }
 }
@@ -181,8 +182,10 @@ struct dayaMediumWidget: Widget {
                             endPoint: .bottom
                         )
                     }
+                    .widgetURL(URL(string: "daya://refresh"))
             } else {
                 dayaWidgetEntryView(entry: entry, isSmall: false)
+                    .widgetURL(URL(string: "daya://refresh"))
             }
         }
         .configurationDisplayName("Battle Stats")
@@ -208,8 +211,10 @@ struct dayaSmallWidget: Widget {
                             endPoint: .bottom
                         )
                     }
+                    .widgetURL(URL(string: "daya://refresh"))
             } else {
                 dayaWidgetEntryView(entry: entry, isSmall: true)
+                    .widgetURL(URL(string: "daya://refresh"))
             }
         }
         .configurationDisplayName("Battle Stats Compact")

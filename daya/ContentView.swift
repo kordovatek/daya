@@ -1,6 +1,7 @@
 import SwiftUI
 import ActivityKit
 import UserNotifications
+import WidgetKit
 
 struct DayaLiveActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
@@ -1715,6 +1716,9 @@ class HabitTracker: ObservableObject {
         loadLast7Days()
         
         updateLiveActivity()
+        
+        // Reload widgets
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     func clearToday() {
@@ -1731,6 +1735,9 @@ class HabitTracker: ObservableObject {
         loadLast7Days()
         
         updateLiveActivity()
+        
+        // Reload widgets
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     func updateLiveActivity() {
@@ -1925,6 +1932,9 @@ class SehajPaathTracker: ObservableObject {
         updateProgress()
         markTodayIfChanged()
         updateLiveActivity()
+        
+        // Reload widgets
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     func updateLiveActivity() {
