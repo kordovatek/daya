@@ -3,21 +3,68 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		A1000001000000000000001 /* dayaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002000000000000001 /* dayaApp.swift */; };
 		A1000003000000000000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000004000000000000001 /* ContentView.swift */; };
 		A1000005000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000006000000000000001 /* Assets.xcassets */; };
+		FFA2EB7F2EA5C01900BD273B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FFA2EB7E2EA5C01900BD273B /* WidgetKit.framework */; };
+		FFA2EB812EA5C01900BD273B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FFA2EB802EA5C01900BD273B /* SwiftUI.framework */; };
+		FFA2EB902EA5C01A00BD273B /* dayaWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FFA2EB7C2EA5C01900BD273B /* dayaWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		FFA2EB8E2EA5C01A00BD273B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1000010000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FFA2EB7B2EA5C01900BD273B;
+			remoteInfo = dayaWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FFA2EB912EA5C01A00BD273B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FFA2EB902EA5C01A00BD273B /* dayaWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
-		A1000007000000000000001 /* daya.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = daya.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1000002000000000000001 /* dayaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = dayaApp.swift; sourceTree = "<group>"; };
 		A1000004000000000000001 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1000006000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1000007000000000000001 /* daya.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = daya.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FFA2EB7C2EA5C01900BD273B /* dayaWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = dayaWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FFA2EB7E2EA5C01900BD273B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		FFA2EB802EA5C01900BD273B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		FFA2EB962EA5C04C00BD273B /* daya.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = daya.entitlements; sourceTree = "<group>"; };
+		FFA2EB982EA5C1B800BD273B /* dayaWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = dayaWidgetExtension.entitlements; sourceTree = "<group>"; };
+		FFA2EB992EA5C82600BD273B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FFA2EB942EA5C01A00BD273B /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FFA2EB7B2EA5C01900BD273B /* dayaWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		FFA2EB822EA5C01900BD273B /* dayaWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (FFA2EB942EA5C01A00BD273B /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = dayaWidget; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A1000008000000000000001 /* Frameworks */ = {
@@ -27,13 +74,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FFA2EB792EA5C01900BD273B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FFA2EB812EA5C01900BD273B /* SwiftUI.framework in Frameworks */,
+				FFA2EB7F2EA5C01900BD273B /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		A1000009000000000000001 = {
 			isa = PBXGroup;
 			children = (
+				FFA2EB982EA5C1B800BD273B /* dayaWidgetExtension.entitlements */,
 				A100000A000000000000001 /* daya */,
+				FFA2EB822EA5C01900BD273B /* dayaWidget */,
+				FFA2EB7D2EA5C01900BD273B /* Frameworks */,
 				A100000B000000000000001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +100,8 @@
 		A100000A000000000000001 /* daya */ = {
 			isa = PBXGroup;
 			children = (
+				FFA2EB992EA5C82600BD273B /* Info.plist */,
+				FFA2EB962EA5C04C00BD273B /* daya.entitlements */,
 				A1000002000000000000001 /* dayaApp.swift */,
 				A1000004000000000000001 /* ContentView.swift */,
 				A1000006000000000000001 /* Assets.xcassets */,
@@ -52,8 +113,18 @@
 			isa = PBXGroup;
 			children = (
 				A1000007000000000000001 /* daya.app */,
+				FFA2EB7C2EA5C01900BD273B /* dayaWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		FFA2EB7D2EA5C01900BD273B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FFA2EB7E2EA5C01900BD273B /* WidgetKit.framework */,
+				FFA2EB802EA5C01900BD273B /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -66,15 +137,39 @@
 				A100000E000000000000001 /* Sources */,
 				A1000008000000000000001 /* Frameworks */,
 				A100000F000000000000001 /* Resources */,
+				FFA2EB912EA5C01A00BD273B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				FFA2EB8F2EA5C01A00BD273B /* PBXTargetDependency */,
 			);
 			name = daya;
 			productName = daya;
 			productReference = A1000007000000000000001 /* daya.app */;
 			productType = "com.apple.product-type.application";
+		};
+		FFA2EB7B2EA5C01900BD273B /* dayaWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FFA2EB952EA5C01A00BD273B /* Build configuration list for PBXNativeTarget "dayaWidgetExtension" */;
+			buildPhases = (
+				FFA2EB782EA5C01900BD273B /* Sources */,
+				FFA2EB792EA5C01900BD273B /* Frameworks */,
+				FFA2EB7A2EA5C01900BD273B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FFA2EB822EA5C01900BD273B /* dayaWidget */,
+			);
+			name = dayaWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = dayaWidgetExtension;
+			productReference = FFA2EB7C2EA5C01900BD273B /* dayaWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -83,8 +178,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					FFA2EB7B2EA5C01900BD273B = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+				};
 			};
 			buildConfigurationList = A1000011000000000000001 /* Build configuration list for PBXProject "daya" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -100,6 +200,7 @@
 			projectRoot = "";
 			targets = (
 				A100000C000000000000001 /* daya */,
+				FFA2EB7B2EA5C01900BD273B /* dayaWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -110,6 +211,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000005000000000000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FFA2EB7A2EA5C01900BD273B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,7 +233,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FFA2EB782EA5C01900BD273B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FFA2EB8F2EA5C01A00BD273B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FFA2EB7B2EA5C01900BD273B /* dayaWidgetExtension */;
+			targetProxy = FFA2EB8E2EA5C01A00BD273B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A1000012000000000000001 /* Debug */ = {
@@ -247,11 +370,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = daya/daya.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = SYWW2WAVR3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = daya/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Daya;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -275,11 +401,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = daya/daya.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = SYWW2WAVR3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = daya/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Daya;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -298,18 +427,82 @@
 			};
 			name = Release;
 		};
+		FFA2EB922EA5C01A00BD273B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = dayaWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SYWW2WAVR3;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = dayaWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = dayaWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daya.daya.dayaWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FFA2EB932EA5C01A00BD273B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = dayaWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SYWW2WAVR3;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = dayaWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = dayaWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.daya.daya.dayaWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1000011000000000000001 /* Build configuration list for PBXProject "daya" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A1000012000000000000001 /* Debug */,
-				A1000013000000000000001 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		A100000D000000000000001 /* Build configuration list for PBXNativeTarget "daya" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -319,8 +512,25 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A1000011000000000000001 /* Build configuration list for PBXProject "daya" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1000012000000000000001 /* Debug */,
+				A1000013000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FFA2EB952EA5C01A00BD273B /* Build configuration list for PBXNativeTarget "dayaWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FFA2EB922EA5C01A00BD273B /* Debug */,
+				FFA2EB932EA5C01A00BD273B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 	};
 	rootObject = A1000010000000000000001 /* Project object */;
 }
-
