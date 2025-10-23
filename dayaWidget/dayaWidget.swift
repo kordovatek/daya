@@ -1,37 +1,96 @@
 import WidgetKit
 import SwiftUI
 
+struct WidgetHabit: Codable {
+    let id: String
+    let name: String
+    let isVisible: Bool
+}
+
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), simranDone: false, paathAngs: 0, streak: 0, weekProgress: Array(repeating: false, count: 7))
+        SimpleEntry(date: Date(), habit1Name: "Nitnem", habit1Done: false, habit2Name: "Simran", habit2Done: false, streak: 0, weekProgress: Array(repeating: false, count: 7))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let entry = SimpleEntry(date: Date(), simranDone: false, paathAngs: 0, streak: 0, weekProgress: Array(repeating: false, count: 7))
+        let entry = SimpleEntry(date: Date(), habit1Name: "Nitnem", habit1Done: false, habit2Name: "Simran", habit2Done: false, streak: 0, weekProgress: Array(repeating: false, count: 7))
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
-        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
         
         let today = Date()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let todayKey = dateFormatter.string(from: today)
         
-        let simranDone = sharedDefaults?.object(forKey: "simran_\(todayKey)") as? Bool ?? false
-        let paathAngs = sharedDefaults?.integer(forKey: "paath_angs_\(todayKey)") ?? 0
+        // Load habit configuration
+        var visibleHabits: [WidgetHabit] = []
+        if let habitData = sharedDefaults?.data(forKey: "habit_config"),
+           let habits = try? JSONDecoder().decode([WidgetHabit].self, from: habitData) {
+            visibleHabits = habits.filter { $0.isVisible }
+        }
         
-        // Calculate streak
+        // Get first two habits
+        let habit1 = visibleHabits.first
+        let habit2 = visibleHabits.count > 1 ? visibleHabits[1] : nil
+        
+        // Get habit statuses
+        let habit1Done: Bool
+        if let habit1 = habit1 {
+            if habit1.id == "sehaj_paath" {
+                let angs = sharedDefaults?.integer(forKey: "paath_angs_\(todayKey)") ?? 0
+                habit1Done = angs > 0
+            } else if habit1.id == "morning_simran" {
+                habit1Done = sharedDefaults?.object(forKey: "simran_\(todayKey)") as? Bool ?? false
+            } else {
+                habit1Done = sharedDefaults?.object(forKey: "\(habit1.id)_\(todayKey)") as? Bool ?? false
+            }
+        } else {
+            habit1Done = false
+        }
+        
+        let habit2Done: Bool
+        if let habit2 = habit2 {
+            if habit2.id == "sehaj_paath" {
+                let angs = sharedDefaults?.integer(forKey: "paath_angs_\(todayKey)") ?? 0
+                habit2Done = angs > 0
+            } else if habit2.id == "morning_simran" {
+                habit2Done = sharedDefaults?.object(forKey: "simran_\(todayKey)") as? Bool ?? false
+            } else {
+                habit2Done = sharedDefaults?.object(forKey: "\(habit2.id)_\(todayKey)") as? Bool ?? false
+            }
+        } else {
+            habit2Done = false
+        }
+        
+        // Calculate streak based on all visible habits
         var streak = 0
         var currentDate = today
         while true {
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let key = dateFormatter.string(from: currentDate)
-            let simran = sharedDefaults?.object(forKey: "simran_\(key)") as? Bool ?? false
-            let paath = sharedDefaults?.integer(forKey: "paath_angs_\(key)") ?? 0
             
-            if simran && paath > 0 {
+            var allDone = true
+            for habit in visibleHabits {
+                let done: Bool
+                if habit.id == "sehaj_paath" {
+                    let angs = sharedDefaults?.integer(forKey: "paath_angs_\(key)") ?? 0
+                    done = angs > 0
+                } else if habit.id == "morning_simran" {
+                    done = sharedDefaults?.object(forKey: "simran_\(key)") as? Bool ?? false
+                } else {
+                    done = sharedDefaults?.object(forKey: "\(habit.id)_\(key)") as? Bool ?? false
+                }
+                
+                if !done {
+                    allDone = false
+                    break
+                }
+            }
+            
+            if allDone && !visibleHabits.isEmpty {
                 streak += 1
                 currentDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate)!
             } else {
@@ -50,15 +109,34 @@ struct Provider: TimelineProvider {
             let date = calendar.date(byAdding: .day, value: i, to: mostRecentSunday)!
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let key = dateFormatter.string(from: date)
-            let simran = sharedDefaults?.object(forKey: "simran_\(key)") as? Bool ?? false
-            let paath = sharedDefaults?.integer(forKey: "paath_angs_\(key)") ?? 0
-            weekProgress.append(simran && paath > 0)
+            
+            var allDone = true
+            for habit in visibleHabits {
+                let done: Bool
+                if habit.id == "sehaj_paath" {
+                    let angs = sharedDefaults?.integer(forKey: "paath_angs_\(key)") ?? 0
+                    done = angs > 0
+                } else if habit.id == "morning_simran" {
+                    done = sharedDefaults?.object(forKey: "simran_\(key)") as? Bool ?? false
+                } else {
+                    done = sharedDefaults?.object(forKey: "\(habit.id)_\(key)") as? Bool ?? false
+                }
+                
+                if !done {
+                    allDone = false
+                    break
+                }
+            }
+            
+            weekProgress.append(allDone && !visibleHabits.isEmpty)
         }
         
         let entry = SimpleEntry(
             date: today,
-            simranDone: simranDone,
-            paathAngs: paathAngs,
+            habit1Name: habit1?.name ?? "No Habit",
+            habit1Done: habit1Done,
+            habit2Name: habit2?.name ?? "No Habit",
+            habit2Done: habit2Done,
             streak: streak,
             weekProgress: weekProgress
         )
@@ -72,8 +150,10 @@ struct Provider: TimelineProvider {
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let simranDone: Bool
-    let paathAngs: Int
+    let habit1Name: String
+    let habit1Done: Bool
+    let habit2Name: String
+    let habit2Done: Bool
     let streak: Int
     let weekProgress: [Bool]
 }
@@ -90,19 +170,23 @@ struct dayaWidgetEntryView : View {
                     .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
                 
                 HStack(spacing: 6) {
-                    Text("Simran")
+                    Text(entry.habit1Name)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
-                    Text(entry.simranDone ? "🏆" : "❌")
+                        .lineLimit(1)
+                    Text(entry.habit1Done ? "🏆" : "❌")
                         .font(.system(size: 18))
                 }
                 
-                HStack(spacing: 6) {
-                    Text("Sehaj Paath")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                    Text(entry.paathAngs > 0 ? "🏆" : "❌")
-                        .font(.system(size: 18))
+                if entry.habit2Name != "No Habit" {
+                    HStack(spacing: 6) {
+                        Text(entry.habit2Name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Text(entry.habit2Done ? "🏆" : "❌")
+                            .font(.system(size: 18))
+                    }
                 }
                 
                 Spacer()
@@ -127,19 +211,23 @@ struct dayaWidgetEntryView : View {
                 HStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 8) {
-                            Text("Morning Simran")
+                            Text(entry.habit1Name)
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
-                            Text(entry.simranDone ? "🏆" : "❌")
+                                .lineLimit(1)
+                            Text(entry.habit1Done ? "🏆" : "❌")
                                 .font(.system(size: 24))
                         }
                         
-                        HStack(spacing: 8) {
-                            Text("Sehaj Paath")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                            Text(entry.paathAngs > 0 ? "🏆" : "❌")
-                                .font(.system(size: 24))
+                        if entry.habit2Name != "No Habit" {
+                            HStack(spacing: 8) {
+                                Text(entry.habit2Name)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .lineLimit(1)
+                                Text(entry.habit2Done ? "🏆" : "❌")
+                                    .font(.system(size: 24))
+                            }
                         }
                     }
                     

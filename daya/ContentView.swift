@@ -17,7 +17,7 @@ struct Habit: Identifiable, Codable {
     var isVisible: Bool
     let isSystem: Bool
     
-    static let morningSimran = Habit(id: "morning_simran", name: "Morning Simran", emoji: "🏆", isVisible: true, isSystem: true)
+    static let morningSimran = Habit(id: "morning_simran", name: "Simran", emoji: "🏆", isVisible: true, isSystem: true)
     static let sehajPaath = Habit(id: "sehaj_paath", name: "Sehaj Paath", emoji: "📖", isVisible: true, isSystem: true)
 }
 
@@ -34,8 +34,17 @@ class HabitConfig: ObservableObject {
         if let data = defaults.data(forKey: key),
            let decoded = try? JSONDecoder().decode([Habit].self, from: data) {
             habits = decoded
+            
+            // Ensure Nitnem is always present
+            if !habits.contains(where: { $0.id == "nitnem" }) {
+                let nitnem = Habit(id: "nitnem", name: "Nitnem", emoji: "📿", isVisible: true, isSystem: false)
+                habits.insert(nitnem, at: 0) // Insert at the beginning
+                saveHabits()
+            }
         } else {
-            habits = [.morningSimran, .sehajPaath]
+            // Add Nitnem as a default custom habit
+            let nitnem = Habit(id: "nitnem", name: "Nitnem", emoji: "📿", isVisible: true, isSystem: false)
+            habits = [nitnem, .morningSimran, .sehajPaath]
             saveHabits()
         }
     }
@@ -43,6 +52,13 @@ class HabitConfig: ObservableObject {
     func saveHabits() {
         if let encoded = try? JSONEncoder().encode(habits) {
             defaults.set(encoded, forKey: key)
+            
+            // Also save to shared defaults for widget access
+            let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
+            sharedDefaults?.set(encoded, forKey: key)
+            
+            // Refresh widgets
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
     
@@ -78,25 +94,44 @@ class HabitConfig: ObservableObject {
     }
 }
 
+class OnboardingManager: ObservableObject {
+    @Published var hasCompletedOnboarding: Bool {
+        didSet {
+            UserDefaults.standard.set(hasCompletedOnboarding, forKey: "has_completed_onboarding")
+        }
+    }
+    
+    init() {
+        self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "has_completed_onboarding")
+    }
+    
+    func resetOnboarding() {
+        hasCompletedOnboarding = false
+    }
+}
+
 struct ContentView: View {
     @StateObject private var simranTracker = HabitTracker()
     @StateObject private var paathTracker = SehajPaathTracker()
     @StateObject private var habitConfig = HabitConfig()
+    @StateObject private var onboardingManager = OnboardingManager()
     @State private var selectedTab = 0
     
     var body: some View {
-        ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.05, green: 0.08, blue: 0.15),
-                    Color(red: 0.08, green: 0.12, blue: 0.20)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
+        if !onboardingManager.hasCompletedOnboarding {
+            OnboardingView(onboardingManager: onboardingManager, habitConfig: habitConfig)
+        } else {
+            ZStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.05, green: 0.08, blue: 0.15),
+                        Color(red: 0.08, green: 0.12, blue: 0.20)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                
                 // Content
                 TabView(selection: $selectedTab) {
                     TodayView(simranTracker: simranTracker, paathTracker: paathTracker, habitConfig: habitConfig)
@@ -105,74 +140,37 @@ struct ContentView: View {
                     CalendarTabView(simranTracker: simranTracker, paathTracker: paathTracker, habitConfig: habitConfig)
                         .tag(1)
                     
-                    SettingsView(habitConfig: habitConfig)
+                    SettingsView(habitConfig: habitConfig, onboardingManager: onboardingManager)
                         .tag(2)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 
-                // Liquid glass tab bar
-                HStack(spacing: 20) {
-                    TabBarButton(icon: "house.fill", isSelected: selectedTab == 0) {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            selectedTab = 0
-                        }
-                    }
+                // Floating tab bar overlay
+                VStack {
+                    Spacer()
                     
-                    TabBarButton(icon: "calendar", isSelected: selectedTab == 1) {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            selectedTab = 1
+                    HStack(spacing: 20) {
+                        TabBarButton(icon: "house.fill", isSelected: selectedTab == 0) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                selectedTab = 0
+                            }
+                        }
+                        
+                        TabBarButton(icon: "calendar", isSelected: selectedTab == 1) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                selectedTab = 1
+                            }
+                        }
+                        
+                        TabBarButton(icon: "gearshape.fill", isSelected: selectedTab == 2) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                selectedTab = 2
+                            }
                         }
                     }
-                    
-                    TabBarButton(icon: "gearshape.fill", isSelected: selectedTab == 2) {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            selectedTab = 2
-                        }
-                    }
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 20)
                 }
-                .padding(.vertical, 16)
-                .padding(.horizontal, 32)
-                .background(
-                    ZStack {
-                        // Blurred transparent background
-                        RoundedRectangle(cornerRadius: 28)
-                            .fill(.ultraThinMaterial.opacity(0.8))
-                        
-                        // Semi-transparent dark overlay
-                        RoundedRectangle(cornerRadius: 28)
-                            .fill(Color(red: 0.05, green: 0.08, blue: 0.15).opacity(0.3))
-                        
-                        // Border stroke
-                        RoundedRectangle(cornerRadius: 28)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.15),
-                                        Color.white.opacity(0.05)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 0.5
-                            )
-                        
-                        // Subtle highlight
-                        RoundedRectangle(cornerRadius: 28)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.08),
-                                        Color.clear
-                                    ],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    }
-                )
-                .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 12)
             }
         }
     }
@@ -215,6 +213,7 @@ struct TodayView: View {
     @State private var showPaathEditor = false
     @State private var showSimranInfo = false
     @State private var angsInput: String = ""
+    @State private var showAngsPopup = false
     
     var body: some View {
         ScrollView {
@@ -228,12 +227,17 @@ struct TodayView: View {
                 }
                 .padding(.top, 40)
                 
-                // Morning Simran Widget
+                // Custom Habits (including Nitnem)
+                ForEach(habitConfig.habits.filter { !$0.isSystem && $0.isVisible }) { habit in
+                    CustomHabitWidget(habit: habit, tracker: HabitTracker(prefix: habit.id))
+                }
+                
+                // Simran Widget
                 if habitConfig.isVisible("morning_simran") {
                     WidgetCard {
                     VStack(spacing: 16) {
                         HStack {
-                            Text("Morning Simran")
+                            Text("Simran")
                                 .font(.custom("Georgia-Bold", size: 22))
                                 .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
                             
@@ -249,7 +253,7 @@ struct TodayView: View {
                         }
                         
                         if showSimranInfo {
-                            Text("Complete morning simran by attending sangat at a Gurdwara or doing at least 30 minutes of meditation on your own between 2:00 AM and 6:30 AM.")
+                            Text("Complete simran by attending sangat at a Gurdwara or doing at least 30 minutes of meditation on your own.")
                                 .font(.system(size: 13))
                                 .foregroundColor(.white.opacity(0.8))
                                 .multilineTextAlignment(.center)
@@ -322,112 +326,7 @@ struct TodayView: View {
                             Spacer()
                         }
                         
-                        if showPaathEditor {
-                            VStack(spacing: 12) {
-                                VStack(spacing: 8) {
-                                    Text("Angs Read Today")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white.opacity(0.7))
-                                    
-                                    HStack(spacing: 12) {
-                                        TextField("0", text: $angsInput)
-                                            .keyboardType(.numberPad)
-                                            .font(.system(size: 20, weight: .semibold))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.center)
-                                            .frame(width: 80, height: 44)
-                                            .background(Color.white.opacity(0.1))
-                                            .cornerRadius(10)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 10)
-                                                    .stroke(Color.white.opacity(0.3), lineWidth: 1.5)
-                                            )
-                                            .onAppear {
-                                                angsInput = "\(paathTracker.angsReadToday)"
-                                            }
-                                        
-                                        Button(action: {
-                                            if let angs = Int(angsInput), angs >= 0 {
-                                                paathTracker.setAngsForToday(angs)
-                                            }
-                                        }) {
-                                            Text("Save")
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.white)
-                                                .padding(.horizontal, 20)
-                                                .padding(.vertical, 12)
-                                                .background(Color.green.opacity(0.4))
-                                                .cornerRadius(8)
-                                        }
-                                    }
-                                    
-                                    Text("Current: \(paathTracker.angsReadToday) angs")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
-                                
-                                Divider()
-                                    .background(Color.white.opacity(0.2))
-                                
-                                Button(action: {
-                                    showTargetDatePicker.toggle()
-                                }) {
-                                    Text(paathTracker.targetDate == nil ? "Set Target Date" : "Target: \(paathTracker.formattedTargetDate)")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(Color.white.opacity(0.1))
-                                        .cornerRadius(8)
-                                }
-                                .sheet(isPresented: $showTargetDatePicker) {
-                                    VStack(spacing: 20) {
-                                        Text("Select Target Date")
-                                            .font(.system(size: 20, weight: .semibold))
-                                            .foregroundColor(.white)
-                                            .padding(.top, 20)
-                                        
-                                        DatePicker("", selection: Binding(
-                                            get: { paathTracker.targetDate ?? Date().addingTimeInterval(86400 * 30) },
-                                            set: { paathTracker.targetDate = $0 }
-                                        ), displayedComponents: .date)
-                                            .datePickerStyle(.wheel)
-                                            .labelsHidden()
-                                            .colorScheme(.dark)
-                                        
-                                        Button(action: {
-                                            showTargetDatePicker = false
-                                        }) {
-                                            Text("Done")
-                                                .font(.system(size: 16, weight: .medium))
-                                                .foregroundColor(.white)
-                                                .frame(maxWidth: .infinity)
-                                                .padding(.vertical, 14)
-                                                .background(Color.green.opacity(0.4))
-                                                .cornerRadius(10)
-                                        }
-                                        .padding(.horizontal, 20)
-                                        .padding(.bottom, 20)
-                                    }
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .background(Color(red: 0.05, green: 0.08, blue: 0.15))
-                                    .presentationDetents([.medium])
-                                }
-                                
-                                Button(action: {
-                                    showPaathEditor = false
-                                    angsInput = ""
-                                }) {
-                                    Text("Done")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(Color.green.opacity(0.3))
-                                        .cornerRadius(8)
-                                }
-                            }
-                        } else {
+                        VStack(spacing: 12) {
                             VStack(spacing: 12) {
                                 HStack {
                                     Text("\(paathTracker.percentComplete, specifier: "%.1f")%")
@@ -526,37 +425,173 @@ struct TodayView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        if !showPaathEditor {
-                            showPaathEditor = true
-                        }
+                        showAngsPopup = true
                     }
                     }
-                }
-                
-                // Custom Habits
-                ForEach(habitConfig.habits.filter { !$0.isSystem && $0.isVisible }) { habit in
-                    CustomHabitWidget(habit: habit, tracker: HabitTracker(prefix: habit.id))
                 }
                 
                 Spacer(minLength: 40)
             }
             .padding()
         }
+        .sheet(isPresented: $showAngsPopup) {
+            AngsUpdatePopup(paathTracker: paathTracker)
+        }
+    }
+}
+
+struct AngsUpdatePopup: View {
+    @ObservedObject var paathTracker: SehajPaathTracker
+    @Environment(\.dismiss) private var dismiss
+    @State private var dailyAngsInput: String = ""
+    @State private var currentAngInput: String = ""
+    @State private var isEditingDaily = true
+    @State private var targetDate: Date = Date()
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Update Progress")
+                    .font(.custom("Georgia-Bold", size: 20))
+                    .foregroundColor(.white)
+                Spacer()
+                Button(action: {
+                    dismiss()
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 32, height: 32)
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(Circle())
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .padding(.bottom, 24)
+            
+            // Content
+            VStack(spacing: 24) {
+                // Current Progress Display
+                VStack(spacing: 8) {
+                    Text("Current Progress")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                    
+                    Text("\(paathTracker.currentAng) / 1430")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                    
+                    Text("\(Int(paathTracker.percentComplete))% Complete")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                
+                // Target Date Section
+                VStack(spacing: 16) {
+                    Text("Target Finish Date")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    
+                    DatePicker("", selection: $targetDate, displayedComponents: .date)
+                        .datePickerStyle(CompactDatePickerStyle())
+                        .colorScheme(.dark)
+                        .accentColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                        .onAppear {
+                            targetDate = paathTracker.targetDate ?? Date()
+                        }
+                        .onChange(of: targetDate) { newValue in
+                            paathTracker.targetDate = newValue
+                        }
+                }
+                
+                // Input Section
+                VStack(spacing: 16) {
+                    Text("How many angs did you read today?")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    
+                    TextField("0", text: $dailyAngsInput)
+                        .keyboardType(.numberPad)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .frame(height: 50)
+                        .background(Color.white.opacity(0.08))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                        .onAppear {
+                            dailyAngsInput = "\(paathTracker.angsReadToday)"
+                        }
+                        .onChange(of: dailyAngsInput) { newValue in
+                            if let angs = Int(newValue), angs >= 0 {
+                                paathTracker.setAngsForToday(angs)
+                            }
+                        }
+                }
+            }
+            .padding(.horizontal, 24)
+            
+            Spacer()
+            
+            // Done Button
+            Button(action: {
+                dismiss()
+            }) {
+                Text("Done")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color(red: 0.8, green: 0.67, blue: 0.0))
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(red: 0.05, green: 0.08, blue: 0.15))
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
 }
 
 struct CustomHabitWidget: View {
     let habit: Habit
     @ObservedObject var tracker: HabitTracker
+    @State private var showHabitInfo = false
     
     var body: some View {
         WidgetCard {
             VStack(spacing: 16) {
                 HStack {
-                    Text(habit.emoji.isEmpty ? habit.name : "\(habit.emoji) \(habit.name)")
+                    Text(habit.name)
                         .font(.custom("Georgia-Bold", size: 22))
                         .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                    
+                    Button(action: {
+                        showHabitInfo.toggle()
+                    }) {
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                    
                     Spacer()
+                }
+                
+                if showHabitInfo {
+                    Text("Track your daily progress for this habit. Mark as completed when you've finished it for the day.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
                 }
                 
                 HStack(spacing: 20) {
@@ -567,7 +602,7 @@ struct CustomHabitWidget: View {
                             tracker.markToday(completed: true)
                         }
                     }) {
-                        Text("✅")
+                        Text("🏆")
                             .font(.system(size: 32))
                             .frame(width: 80, height: 44)
                             .background(tracker.isCompletedToday ? Color.green.opacity(0.4) : Color.white.opacity(0.1))
@@ -670,6 +705,7 @@ struct CalendarTabView: View {
                         CalendarGridView(
                             simranTracker: simranTracker,
                             paathTracker: paathTracker,
+                            habitConfig: habitConfig,
                             selectedDate: $selectedDate,
                             displayMonth: currentCalendarMonth
                         )
@@ -698,22 +734,32 @@ struct CalendarTabView: View {
                                 }
                             }
                             
-                            HStack(spacing: 40) {
-                                VStack(spacing: 8) {
-                                    Text("Morning Simran")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.white.opacity(0.7))
-                                    Text(simranTracker.isCompleted(on: selected) ? "✅" : "—")
-                                        .font(.system(size: 24))
-                                }
-                                
-                                VStack(spacing: 8) {
-                                    Text("Sehaj Paath")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.white.opacity(0.7))
-                                    Text("\(paathTracker.getAngsForDate(selected)) angs")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(Color(red: 1.0, green: 0.95, blue: 0.85))
+                            VStack(spacing: 16) {
+                                // Display all visible habits
+                                ForEach(habitConfig.habits.filter { $0.isVisible }) { habit in
+                                    if habit.id == "sehaj_paath" {
+                                        // Sehaj Paath with angs count
+                                        HStack {
+                                            Text(habit.name)
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(.white)
+                                            Spacer()
+                                            Text("\(paathTracker.getAngsForDate(selected)) angs")
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundColor(Color(red: 1.0, green: 0.95, blue: 0.85))
+                                        }
+                                    } else {
+                                        // All other habits with checkmark
+                                        HStack {
+                                            Text(habit.name)
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(.white)
+                                            Spacer()
+                                            let tracker = habit.isSystem ? simranTracker : HabitTracker(prefix: habit.id)
+                                            Text(tracker.isCompleted(on: selected) ? "✅" : "❌")
+                                                .font(.system(size: 20))
+                                        }
+                                    }
                                 }
                             }
                             
@@ -725,7 +771,6 @@ struct CalendarTabView: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             historicalAngsInput = "\(paathTracker.getAngsForDate(selected))"
-                            historicalSimranStatus = simranTracker.isCompleted(on: selected) ? true : nil
                             showEditSheet = true
                         }
                     }
@@ -736,6 +781,7 @@ struct CalendarTabView: View {
                                 date: selected,
                                 simranTracker: simranTracker,
                                 paathTracker: paathTracker,
+                                habitConfig: habitConfig,
                                 historicalAngsInput: $historicalAngsInput,
                                 historicalSimranStatus: $historicalSimranStatus,
                                 isPresented: $showEditSheet
@@ -747,6 +793,16 @@ struct CalendarTabView: View {
                 Spacer(minLength: 40)
             }
             .padding()
+        }
+        .onAppear {
+            // Refresh tracker states when calendar tab becomes visible
+            simranTracker.refreshData()
+            paathTracker.refreshData()
+            
+            // Set current day as selected by default
+            if selectedDate == nil {
+                selectedDate = Date()
+            }
         }
     }
     
@@ -767,6 +823,7 @@ struct EditDaySheet: View {
     let date: Date
     @ObservedObject var simranTracker: HabitTracker
     @ObservedObject var paathTracker: SehajPaathTracker
+    @ObservedObject var habitConfig: HabitConfig
     @Binding var historicalAngsInput: String
     @Binding var historicalSimranStatus: Bool?
     @Binding var isPresented: Bool
@@ -791,73 +848,14 @@ struct EditDaySheet: View {
             .padding(.top, 20)
             
             VStack(spacing: 32) {
-                // Morning Simran Section
-                VStack(spacing: 16) {
-                    Text("Morning Simran")
-                        .font(.custom("Georgia-Bold", size: 20))
-                        .foregroundColor(.white)
-                    
-                    HStack(spacing: 20) {
-                        Button(action: {
-                            historicalSimranStatus = true
-                        }) {
-                            VStack(spacing: 8) {
-                                Text("✅")
-                                    .font(.system(size: 40))
-                                Text("Done")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 20)
-                            .background(historicalSimranStatus == true ? Color.green.opacity(0.3) : Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(historicalSimranStatus == true ? Color.green : Color.white.opacity(0.2), lineWidth: 2)
-                            )
-                        }
+                // All Habits (excluding Sehaj Paath)
+                ForEach(habitConfig.habits.filter { $0.isVisible && $0.id != "sehaj_paath" }) { habit in
+                    VStack(spacing: 16) {
+                        Text(habit.name)
+                            .font(.custom("Georgia-Bold", size: 20))
+                            .foregroundColor(.white)
                         
-                        Button(action: {
-                            historicalSimranStatus = false
-                        }) {
-                            VStack(spacing: 8) {
-                                Text("❌")
-                                    .font(.system(size: 40))
-                                Text("Not Done")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 20)
-                            .background(historicalSimranStatus == false ? Color.red.opacity(0.3) : Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(historicalSimranStatus == false ? Color.red : Color.white.opacity(0.2), lineWidth: 2)
-                            )
-                        }
-                        
-                        Button(action: {
-                            historicalSimranStatus = nil
-                        }) {
-                            VStack(spacing: 8) {
-                                Text("—")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(.white.opacity(0.5))
-                                Text("Clear")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 20)
-                            .background(historicalSimranStatus == nil ? Color.white.opacity(0.2) : Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(historicalSimranStatus == nil ? Color.white.opacity(0.4) : Color.white.opacity(0.2), lineWidth: 2)
-                            )
-                        }
+                        HabitEditButtons(habit: habit, date: date, simranTracker: simranTracker)
                     }
                 }
                 
@@ -890,21 +888,15 @@ struct EditDaySheet: View {
             
             Spacer()
             
-            // Save Button
+            // Done Button
             Button(action: {
                 if let angs = Int(historicalAngsInput) {
                     paathTracker.setAngsForDate(angs, date: date)
                 }
                 
-                if let simranStatus = historicalSimranStatus {
-                    simranTracker.markHistoricalDate(date, completed: simranStatus)
-                } else {
-                    simranTracker.clearHistoricalDate(date)
-                }
-                
                 isPresented = false
             }) {
-                Text("Save Changes")
+                Text("Done")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -926,8 +918,89 @@ struct EditDaySheet: View {
     }
 }
 
+struct HabitEditButtons: View {
+    let habit: Habit
+    let date: Date
+    @ObservedObject var simranTracker: HabitTracker
+    @State private var habitStatus: Bool?
+    
+    var body: some View {
+        let tracker = habit.isSystem ? simranTracker : HabitTracker(prefix: habit.id)
+        
+        HStack(spacing: 20) {
+            Button(action: {
+                tracker.markHistoricalDate(date, completed: true)
+                habitStatus = true
+            }) {
+                VStack(spacing: 8) {
+                    Text("✅")
+                        .font(.system(size: 40))
+                    Text("Done")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(tracker.isCompleted(on: date) ? Color.green.opacity(0.3) : Color.white.opacity(0.1))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(tracker.isCompleted(on: date) ? Color.green : Color.white.opacity(0.2), lineWidth: 2)
+                )
+            }
+            
+            Button(action: {
+                tracker.markHistoricalDate(date, completed: false)
+                habitStatus = false
+            }) {
+                VStack(spacing: 8) {
+                    Text("❌")
+                        .font(.system(size: 40))
+                    Text("Not Done")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(!tracker.isCompleted(on: date) && habitStatus == false ? Color.red.opacity(0.3) : Color.white.opacity(0.1))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(!tracker.isCompleted(on: date) && habitStatus == false ? Color.red : Color.white.opacity(0.2), lineWidth: 2)
+                )
+            }
+            
+            Button(action: {
+                tracker.clearHistoricalDate(date)
+                habitStatus = nil
+            }) {
+                VStack(spacing: 8) {
+                    Text("—")
+                        .font(.system(size: 40))
+                        .foregroundColor(.white.opacity(0.5))
+                    Text("Clear")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(!tracker.isCompleted(on: date) && habitStatus == nil ? Color.white.opacity(0.2) : Color.white.opacity(0.1))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(!tracker.isCompleted(on: date) && habitStatus == nil ? Color.white.opacity(0.4) : Color.white.opacity(0.2), lineWidth: 2)
+                )
+            }
+        }
+        .onAppear {
+            habitStatus = tracker.isCompleted(on: date) ? true : nil
+        }
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject var habitConfig: HabitConfig
+    @ObservedObject var onboardingManager: OnboardingManager
     
     @State private var dailyRemindersEnabled = false
     @State private var reminderFrequency = 1
@@ -949,6 +1022,8 @@ struct SettingsView: View {
     @State private var showingHabitInput = false
     @State private var habitToDelete: Habit?
     @State private var showDeleteConfirmation = false
+    @State private var showResetAllConfirmation = false
+    @State private var showResetPaathConfirmation = false
     
     var body: some View {
         ScrollView {
@@ -961,30 +1036,74 @@ struct SettingsView: View {
                 }
                 .padding(.top, 40)
                 
-                // FYI Message
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Daya will always be free, and is a passion project by Kordova Tek Inc.")
-                        .font(.system(size: 13))
-                        .foregroundColor(.white.opacity(0.7))
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Link(destination: URL(string: "mailto:mk@kordovatek.com?subject=Feature%20Request")!) {
+                // Foundation Message
+                WidgetCard {
+                    VStack(spacing: 16) {
                         HStack {
-                            Image(systemName: "envelope.fill")
-                                .font(.system(size: 14))
-                            Text("Send Feature Request")
-                                .font(.system(size: 14, weight: .medium))
+                            Text("✨ About Daya")
+                                .font(.custom("Georgia-Bold", size: 20))
+                                .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                            Spacer()
                         }
-                        .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.1))
-                        .cornerRadius(8)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Daya is a non-profit project that will always be free.")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.white.opacity(0.9))
+                                .multilineTextAlignment(.leading)
+                            
+                            Text("Built by Kordova Tek Foundation - Technology in Service of Humanity")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.7))
+                                .multilineTextAlignment(.leading)
+                                .italic()
+                        }
+                        
+                        Button(action: {
+                            sendFeatureRequest()
+                        }) {
+                            HStack {
+                                Image(systemName: "envelope.fill")
+                                    .font(.system(size: 16))
+                                Text("Send Feature Request")
+                                    .font(.system(size: 16, weight: .medium))
+                                Spacer()
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 14))
+                            }
+                            .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                            .padding(16)
+                            .background(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.1))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                        
+                        Button(action: {
+                            shareWithFriend()
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up.fill")
+                                    .font(.system(size: 16))
+                                Text("Share with Friend")
+                                    .font(.system(size: 16, weight: .medium))
+                                Spacer()
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 14))
+                            }
+                            .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                            .padding(16)
+                            .background(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.1))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.3), lineWidth: 1)
+                            )
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 8)
                 
                 // Habit Management
                 WidgetCard {
@@ -1071,8 +1190,11 @@ struct SettingsView: View {
                                         .font(.system(size: 16))
                                         .foregroundColor(.white.opacity(0.3))
                                     
-                                    if !habit.emoji.isEmpty {
+                                    if habit.id == "sehaj_paath" {
                                         Text(habit.emoji)
+                                            .font(.system(size: 24))
+                                    } else {
+                                        Text("🏆")
                                             .font(.system(size: 24))
                                     }
                                     
@@ -1117,7 +1239,7 @@ struct SettingsView: View {
                             Spacer()
                         }
                         
-                        Text("Get reminded to complete your Simran and Sehaj Paath practice throughout the day until you've marked them as done.")
+                        Text("Get reminded to complete your habits throughout the day until you've marked them as done.")
                             .font(.system(size: 13))
                             .foregroundColor(.white.opacity(0.7))
                             .fixedSize(horizontal: false, vertical: true)
@@ -1246,6 +1368,10 @@ struct SettingsView: View {
                         .onChange(of: quoteNotificationsEnabled) { enabled in
                             if enabled {
                                 requestNotificationPermission()
+                                // Auto-fill beautiful quotes if none exist
+                                if quotes.isEmpty {
+                                    autoFillQuotes()
+                                }
                             } else {
                                 cancelQuoteNotifications()
                             }
@@ -1313,8 +1439,9 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Quote Bank Section
-                WidgetCard {
+                // Quote Bank Section (only show if quote notifications are enabled)
+                if quoteNotificationsEnabled {
+                    WidgetCard {
                     VStack(spacing: 16) {
                         HStack {
                             Text("Quote Bank")
@@ -1410,6 +1537,63 @@ struct SettingsView: View {
                         }
                     }
                 }
+                }
+                
+                // Reset Options
+                WidgetCard {
+                    VStack(spacing: 16) {
+                        HStack {
+                            Text("Reset Data")
+                                .font(.custom("Georgia-Bold", size: 22))
+                                .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                            Spacer()
+                        }
+                        
+                        VStack(spacing: 12) {
+                            Button(action: {
+                                showResetAllConfirmation = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                                    Text("Reset All Data")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                                    Spacer()
+                                }
+                                .padding(16)
+                                .background(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.1))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.3), lineWidth: 1)
+                                )
+                            }
+                            
+                            Button(action: {
+                                showResetPaathConfirmation = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "book.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                                    Text("Reset Sehaj Paath Progress")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                                    Spacer()
+                                }
+                                .padding(16)
+                                .background(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.1))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.3), lineWidth: 1)
+                                )
+                            }
+                        }
+                    }
+                }
                 
                 Spacer(minLength: 40)
             }
@@ -1431,6 +1615,22 @@ struct SettingsView: View {
             }
         } message: { habit in
             Text("Are you sure you want to delete '\(habit.name)'?")
+        }
+        .alert("Reset All Data", isPresented: $showResetAllConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset All", role: .destructive) {
+                resetAllData()
+            }
+        } message: {
+            Text("This will reset all habits, Sehaj Paath progress, and settings. This action cannot be undone.")
+        }
+        .alert("Reset Sehaj Paath Progress", isPresented: $showResetPaathConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset Progress", role: .destructive) {
+                resetSehajPaathProgress()
+            }
+        } message: {
+            Text("This will reset all Sehaj Paath progress and start from the beginning. This action cannot be undone.")
         }
     }
     
@@ -1469,10 +1669,27 @@ struct SettingsView: View {
         let times = [reminderTime1, reminderTime2, reminderTime3]
         let calendar = Calendar.current
         
+        // Get enabled habits for dynamic messaging
+        let enabledHabits = habitConfig.habits.filter { $0.isVisible }
+        let habitNames = enabledHabits.map { $0.name }
+        
         for i in 0..<reminderFrequency {
             let content = UNMutableNotificationContent()
-            content.title = "Simran & Sehaj Paath Reminder"
-            content.body = "Don't forget to complete your daily practice! 🙏"
+            
+            if habitNames.count == 1 {
+                content.title = "\(habitNames[0]) Reminder"
+                content.body = "Don't forget to complete your \(habitNames[0].lowercased()) today! 🙏"
+            } else if habitNames.count == 2 {
+                content.title = "Daily Habits Reminder"
+                content.body = "Don't forget to complete your \(habitNames[0]) and \(habitNames[1]) today! 🙏"
+            } else if habitNames.count > 2 {
+                content.title = "Daily Habits Reminder"
+                content.body = "Don't forget to complete your habits today! 🙏"
+            } else {
+                content.title = "Daily Habits Reminder"
+                content.body = "Don't forget to complete your daily practice! 🙏"
+            }
+            
             content.sound = .default
             
             let components = calendar.dateComponents([.hour, .minute], from: times[i])
@@ -1593,11 +1810,637 @@ struct SettingsView: View {
             quotes = saved
         }
     }
+    
+    func resetAllData() {
+        // Reset all UserDefaults
+        let defaults = UserDefaults.standard
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
+        
+        // Get all keys and remove them
+        let allKeys = defaults.dictionaryRepresentation().keys
+        for key in allKeys {
+            defaults.removeObject(forKey: key)
+        }
+        
+        // Reset shared defaults
+        if let sharedKeys = sharedDefaults?.dictionaryRepresentation().keys {
+            for key in sharedKeys {
+                sharedDefaults?.removeObject(forKey: key)
+            }
+        }
+        
+        // Reset habit config to defaults
+        let nitnem = Habit(id: "nitnem", name: "Nitnem", emoji: "📿", isVisible: true, isSystem: false)
+        habitConfig.habits = [nitnem, .morningSimran, .sehajPaath]
+        habitConfig.saveHabits()
+        
+        // Cancel all notifications
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        
+        // Reset onboarding state
+        onboardingManager.resetOnboarding()
+    }
+    
+    func resetSehajPaathProgress() {
+        let defaults = UserDefaults.standard
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
+        
+        // Remove all Sehaj Paath related keys
+        let allKeys = defaults.dictionaryRepresentation().keys
+        for key in allKeys {
+            if key.hasPrefix("paath_") {
+                defaults.removeObject(forKey: key)
+            }
+        }
+        
+        // Remove from shared defaults
+        if let sharedKeys = sharedDefaults?.dictionaryRepresentation().keys {
+            for key in sharedKeys {
+                if key.hasPrefix("paath_") {
+                    sharedDefaults?.removeObject(forKey: key)
+                }
+            }
+        }
+        
+        // Reset start date to today
+        defaults.set(Date(), forKey: "paath_start_date")
+    }
+    
+    func sendFeatureRequest() {
+        let email = "foundation@kordovatek.com"
+        let subject = "Feature Request / Daya"
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "mailto:\(email)?subject=\(encodedSubject)"
+        
+        if let url = URL(string: urlString) {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    func shareWithFriend() {
+        let message = "Try Daya — a beautiful habit tracker to build daily discipline with compassion. Download: https://apps.apple.com/app/daya"
+        let encodedMessage = message.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "sms:&body=\(encodedMessage)"
+        
+        if let url = URL(string: urlString) {
+            UIApplication.shared.open(url)
+        }
+    }
+    
+    func autoFillQuotes() {
+        let beautifulQuotes = [
+            "The body is a guest house; the soul will not stay forever.",
+            "What you think, you become.",
+            "Live in gratitude."
+        ]
+        
+        quotes = beautifulQuotes
+        saveQuotes()
+    }
+}
+
+// MARK: - Onboarding Views
+
+struct OnboardingView: View {
+    @ObservedObject var onboardingManager: OnboardingManager
+    @ObservedObject var habitConfig: HabitConfig
+    @State private var currentPage = 0
+    @State private var selectedHabits: Set<String> = ["nitnem", "morning_simran", "sehaj_paath"]
+    @State private var customHabitName = ""
+    @State private var remindersEnabled = false
+    @State private var quotesEnabled = false
+    @State private var notificationPermissionGranted = false
+    
+    let totalPages = 4
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.05, green: 0.08, blue: 0.15),
+                    Color(red: 0.08, green: 0.12, blue: 0.20)
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            TabView(selection: $currentPage) {
+                // Page 1: Welcome
+                OnboardingWelcomePage()
+                    .tag(0)
+                
+                // Page 2: Habits
+                OnboardingHabitsPage(
+                    selectedHabits: $selectedHabits,
+                    customHabitName: $customHabitName,
+                    habitConfig: habitConfig
+                )
+                .tag(1)
+                
+                // Page 3: Reminders
+                OnboardingRemindersPage(
+                    remindersEnabled: $remindersEnabled,
+                    notificationPermissionGranted: $notificationPermissionGranted
+                )
+                .tag(2)
+                
+                // Page 4: Quotes
+                OnboardingQuotesPage(
+                    quotesEnabled: $quotesEnabled,
+                    notificationPermissionGranted: $notificationPermissionGranted
+                )
+                .tag(3)
+            }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
+            .indexViewStyle(PageIndexViewStyle(backgroundDisplayMode: .always))
+            
+            VStack {
+                Spacer()
+                
+                // Continue/Finish Button
+                Button(action: {
+                    if currentPage < totalPages - 1 {
+                        withAnimation {
+                            currentPage += 1
+                        }
+                    } else {
+                        completeOnboarding()
+                    }
+                }) {
+                    Text(currentPage < totalPages - 1 ? "Continue" : "Get Started")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color(red: 0.8, green: 0.67, blue: 0.0))
+                        .cornerRadius(16)
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 60)
+            }
+        }
+    }
+    
+    func completeOnboarding() {
+        // Apply selected habits
+        var newHabits: [Habit] = []
+        
+        if selectedHabits.contains("nitnem") {
+            newHabits.append(Habit(id: "nitnem", name: "Nitnem", emoji: "📿", isVisible: true, isSystem: false))
+        }
+        if selectedHabits.contains("morning_simran") {
+            newHabits.append(.morningSimran)
+        }
+        if selectedHabits.contains("sehaj_paath") {
+            newHabits.append(.sehajPaath)
+        }
+        
+        // Add custom habit if provided
+        if !customHabitName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let customId = "custom_\(UUID().uuidString)"
+            newHabits.append(Habit(id: customId, name: customHabitName, emoji: "📿", isVisible: true, isSystem: false))
+        }
+        
+        habitConfig.habits = newHabits
+        habitConfig.saveHabits()
+        
+        // Enable reminders if selected
+        if remindersEnabled {
+            UserDefaults.standard.set(true, forKey: "daily_reminders_enabled")
+        }
+        
+        // Enable quotes if selected
+        if quotesEnabled {
+            UserDefaults.standard.set(true, forKey: "quote_notifications_enabled")
+            // Auto-fill default quotes
+            let beautifulQuotes = [
+                "The body is a guest house; the soul will not stay forever.",
+                "What you think, you become.",
+                "Live in gratitude."
+            ]
+            if let encoded = try? JSONEncoder().encode(beautifulQuotes) {
+                UserDefaults.standard.set(encoded, forKey: "quotes")
+            }
+        }
+        
+        onboardingManager.hasCompletedOnboarding = true
+    }
+}
+
+struct OnboardingWelcomePage: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer()
+                    .frame(height: 60)
+                
+                // App Icon/Logo
+                Text("🙏")
+                    .font(.system(size: 80))
+                
+                // App Name
+                Text("daya")
+                    .font(.custom("Georgia-Bold", size: 48))
+                    .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                
+                // Mission Statement
+                VStack(spacing: 20) {
+                    Text("We believe a whole life starts grounded in simplicity - great habits and daya (compassion).")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                    
+                    Text("In Sikhi, daya means the strength to act with kindness, discipline, and awareness.")
+                        .font(.system(size: 15))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                    
+                    Text("Our goal is to evolve into a companion that keeps you grounded in the present — building good habits, living in daya and love.")
+                        .font(.system(size: 15))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+                
+                // Foundation Info
+                VStack(spacing: 12) {
+                    Text("Daya is a non-profit project that will always be free.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Built by Kordova Tek Foundation")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.6))
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Technology in Service of Humanity")
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.6))
+                        .multilineTextAlignment(.center)
+                        .italic()
+                }
+                .padding(.top, 20)
+                
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+        }
+    }
+}
+
+struct OnboardingHabitsPage: View {
+    @Binding var selectedHabits: Set<String>
+    @Binding var customHabitName: String
+    @ObservedObject var habitConfig: HabitConfig
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer()
+                    .frame(height: 40)
+                
+                Text("Choose Your Habits")
+                    .font(.custom("Georgia-Bold", size: 32))
+                    .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                
+                Text("Select the daily practices you'd like to track")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                
+                VStack(spacing: 16) {
+                    // Nitnem
+                    HabitToggleCard(
+                        title: "Nitnem",
+                        description: "Daily prayers and spiritual practice",
+                        isSelected: selectedHabits.contains("nitnem")
+                    ) {
+                        toggleHabit("nitnem")
+                    }
+                    
+                    // Simran
+                    HabitToggleCard(
+                        title: "Simran",
+                        description: "Meditation and remembrance",
+                        isSelected: selectedHabits.contains("morning_simran")
+                    ) {
+                        toggleHabit("morning_simran")
+                    }
+                    
+                    // Sehaj Paath
+                    HabitToggleCard(
+                        title: "Sehaj Paath",
+                        description: "Reading Sri Guru Granth Sahib Ji",
+                        isSelected: selectedHabits.contains("sehaj_paath")
+                    ) {
+                        toggleHabit("sehaj_paath")
+                    }
+                    
+                    // Custom Habit
+                    VStack(spacing: 12) {
+                        Text("Add Custom Habit (Optional)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                        
+                        TextField("Enter habit name", text: $customHabitName)
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                            .padding(16)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 24)
+                
+                Spacer()
+                    .frame(height: 100)
+            }
+        }
+    }
+    
+    func toggleHabit(_ habitId: String) {
+        if selectedHabits.contains(habitId) {
+            selectedHabits.remove(habitId)
+        } else {
+            selectedHabits.insert(habitId)
+        }
+    }
+}
+
+struct HabitToggleCard: View {
+    let title: String
+    let description: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Text("🏆")
+                    .font(.system(size: 32))
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    Text(description)
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                
+                Spacer()
+                
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 24))
+                    .foregroundColor(isSelected ? Color(red: 1.0, green: 0.84, blue: 0.0) : .white.opacity(0.3))
+            }
+            .padding(16)
+            .background(isSelected ? Color(red: 1.0, green: 0.84, blue: 0.0).opacity(0.15) : Color.white.opacity(0.05))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color(red: 1.0, green: 0.84, blue: 0.0) : Color.white.opacity(0.2), lineWidth: 1.5)
+            )
+        }
+    }
+}
+
+struct OnboardingRemindersPage: View {
+    @Binding var remindersEnabled: Bool
+    @Binding var notificationPermissionGranted: Bool
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer()
+                    .frame(height: 40)
+                
+                Text("Daily Reminders")
+                    .font(.custom("Georgia-Bold", size: 32))
+                    .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                
+                Text("Stay consistent with gentle reminders")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                
+                // Notification Preview
+                VStack(spacing: 16) {
+                    Text("Preview")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.5))
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("🙏")
+                                .font(.system(size: 20))
+                            Text("daya")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("now")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        
+                        Text("Daily Habits Reminder")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                        
+                        Text("Don't forget to complete your habits today! 🙏")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(16)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal, 24)
+                
+                // Enable Toggle
+                Button(action: {
+                    requestNotificationPermission()
+                }) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Enable Reminders")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                            
+                            Text(notificationPermissionGranted ? "Notifications enabled" : "Tap to enable notifications")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        
+                        Spacer()
+                        
+                        Toggle("", isOn: $remindersEnabled)
+                            .labelsHidden()
+                            .tint(Color(red: 1.0, green: 0.84, blue: 0.0))
+                            .disabled(!notificationPermissionGranted)
+                    }
+                    .padding(16)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal, 24)
+                
+                Spacer()
+                    .frame(height: 100)
+            }
+        }
+    }
+    
+    func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+            DispatchQueue.main.async {
+                notificationPermissionGranted = granted
+                if granted {
+                    remindersEnabled = true
+                }
+            }
+        }
+    }
+}
+
+struct OnboardingQuotesPage: View {
+    @Binding var quotesEnabled: Bool
+    @Binding var notificationPermissionGranted: Bool
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 32) {
+                Spacer()
+                    .frame(height: 40)
+                
+                Text("Inspiring Quotes")
+                    .font(.custom("Georgia-Bold", size: 32))
+                    .foregroundColor(Color(red: 1.0, green: 0.84, blue: 0.0))
+                
+                Text("Receive daily wisdom and inspiration")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                
+                // Notification Preview
+                VStack(spacing: 16) {
+                    Text("Preview")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.5))
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("✨")
+                                .font(.system(size: 20))
+                            Text("daya")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("now")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        
+                        Text("Daily Inspiration")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                        
+                        Text("\"The body is a guest house; the soul will not stay forever.\"")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.7))
+                            .italic()
+                    }
+                    .padding(16)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal, 24)
+                
+                // Enable Toggle
+                Button(action: {
+                    if !notificationPermissionGranted {
+                        requestNotificationPermission()
+                    }
+                }) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Enable Quote Notifications")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                            
+                            Text(notificationPermissionGranted ? "Notifications enabled" : "Tap to enable notifications")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        
+                        Spacer()
+                        
+                        Toggle("", isOn: $quotesEnabled)
+                            .labelsHidden()
+                            .tint(Color(red: 1.0, green: 0.84, blue: 0.0))
+                            .disabled(!notificationPermissionGranted)
+                    }
+                    .padding(16)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal, 24)
+                
+                Text("You can customize your quote bank later in settings")
+                    .font(.system(size: 13))
+                    .foregroundColor(.white.opacity(0.5))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                
+                Spacer()
+                    .frame(height: 100)
+            }
+        }
+    }
+    
+    func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+            DispatchQueue.main.async {
+                notificationPermissionGranted = granted
+                if granted {
+                    quotesEnabled = true
+                }
+            }
+        }
+    }
 }
 
 struct CalendarGridView: View {
     let simranTracker: HabitTracker
     let paathTracker: SehajPaathTracker
+    let habitConfig: HabitConfig
     @Binding var selectedDate: Date?
     let displayMonth: Date
     
@@ -1635,7 +2478,16 @@ struct CalendarGridView: View {
                             let date = calendar.date(from: DateComponents(year: year, month: month, day: day))!
                             let simranDone = simranTracker.isCompleted(on: date)
                             let paathDone = paathTracker.didComplete(on: date)
-                            let bothDone = simranDone && paathDone
+                            
+                            // Check all custom habits
+                            let customHabitsDone = habitConfig.habits.filter { !$0.isSystem && $0.isVisible }.map { habit in
+                                HabitTracker(prefix: habit.id).isCompleted(on: date)
+                            }
+                            let allCustomHabitsDone = !customHabitsDone.isEmpty && customHabitsDone.allSatisfy { $0 }
+                            
+                            let allDone = simranDone && paathDone && allCustomHabitsDone
+                            let someDone = simranDone || paathDone || customHabitsDone.contains(true)
+                            let isToday = calendar.isDate(date, inSameDayAs: Date())
                             
                             Button(action: {
                                 selectedDate = date
@@ -1646,13 +2498,17 @@ struct CalendarGridView: View {
                                         .foregroundColor(.white)
                                     
                                     Circle()
-                                        .fill(bothDone ? Color.green : (simranDone || paathDone) ? Color.yellow.opacity(0.6) : Color.white.opacity(0.1))
+                                        .fill(allDone ? Color.green : someDone ? Color.yellow.opacity(0.6) : Color.white.opacity(0.1))
                                         .frame(width: 6, height: 6)
                                 }
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 40)
-                                .background(Color.white.opacity(0.05))
+                                .background(isToday ? Color.yellow.opacity(0.3) : Color.white.opacity(0.05))
                                 .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(isToday ? Color.yellow.opacity(0.8) : Color.clear, lineWidth: 2)
+                                )
                             }
                         } else {
                             Color.clear
@@ -1707,7 +2563,7 @@ class HabitTracker: ObservableObject {
         defaults.set(completed, forKey: today)
         
         // Also save to shared UserDefaults for widget
-        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
         sharedDefaults?.set(completed, forKey: today)
         
         isCompletedToday = completed
@@ -1726,7 +2582,7 @@ class HabitTracker: ObservableObject {
         defaults.removeObject(forKey: today)
         
         // Also clear from shared UserDefaults
-        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
         sharedDefaults?.removeObject(forKey: today)
         
         isCompletedToday = false
@@ -1743,7 +2599,7 @@ class HabitTracker: ObservableObject {
     func updateLiveActivity() {
         // Update or start live activity if both tasks aren't complete
         if #available(iOS 16.2, *) {
-            let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+            let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
             let today = dateKey(for: Date())
             let simranDone = sharedDefaults?.object(forKey: today) as? Bool ?? false
             
@@ -1857,7 +2713,7 @@ class HabitTracker: ObservableObject {
         defaults.set(completed, forKey: key)
         
         // Also save to shared UserDefaults for widget
-        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
         sharedDefaults?.set(completed, forKey: key)
         
         calculateStreak()
@@ -1869,11 +2725,18 @@ class HabitTracker: ObservableObject {
         defaults.removeObject(forKey: key)
         
         // Also clear from shared UserDefaults
-        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
         sharedDefaults?.removeObject(forKey: key)
         
         calculateStreak()
         loadLast7Days()
+    }
+    
+    func refreshData() {
+        loadToday()
+        calculateStreak()
+        loadLast7Days()
+        objectWillChange.send()
     }
 }
 
@@ -1925,7 +2788,7 @@ class SehajPaathTracker: ObservableObject {
         defaults.set(angs, forKey: key)
         
         // Also save to shared UserDefaults for widget
-        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+        let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
         sharedDefaults?.set(angs, forKey: key)
         
         objectWillChange.send()
@@ -1939,7 +2802,7 @@ class SehajPaathTracker: ObservableObject {
     
     func updateLiveActivity() {
         if #available(iOS 16.2, *) {
-            let sharedDefaults = UserDefaults(suiteName: "group.com.daya.app")
+            let sharedDefaults = UserDefaults(suiteName: "group.com.daya.daya")
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd"
             let todayKey = dateFormatter.string(from: Date())
@@ -2115,6 +2978,11 @@ class SehajPaathTracker: ObservableObject {
     
     var percentComplete: Double {
         return (Double(currentAng) / Double(totalAngs)) * 100
+    }
+    
+    func refreshData() {
+        updateProgress()
+        objectWillChange.send()
     }
 }
 
